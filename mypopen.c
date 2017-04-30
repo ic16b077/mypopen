@@ -26,7 +26,6 @@ static FILE *file_ptr = NULL;
 
 
 FILE *mypopen(const char *command, const char *type) {
-	pid_t child_pid;
 	int fd[2] = {0};
 
 	/*verify that no other filedescriptor is currently opened
@@ -58,7 +57,7 @@ FILE *mypopen(const char *command, const char *type) {
 	if (pipe(fd) == -1)
 		return NULL;
 
-	switch (child_pid = fork())
+	switch (pid = fork())
 	{
 	    case -1: /*error*/
 			    (void)close(fd[0]);
@@ -123,7 +122,6 @@ FILE *mypopen(const char *command, const char *type) {
 				}
 		break;
 	}
-	pid = child_pid;
 	return file_ptr;
 }
 
