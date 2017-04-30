@@ -61,8 +61,7 @@ FILE *mypopen(const char *command, const char *type) {
 	{
 		errno = EAGAIN;
 		return NULL;
-	}
-		
+	}	
 	if (command == NULL || command[0] == '\0')
 	{
 		errno = EINVAL;
@@ -79,11 +78,11 @@ FILE *mypopen(const char *command, const char *type) {
 		errno = EINVAL;
 		return NULL;
 	}
-
+	
 	/* Errno is set appropriately within the system call procedure */
 	if (pipe(fd) == -1)
 		return NULL;
-
+	
 	switch (pid = fork())
 	{
 		/* Error */
@@ -166,7 +165,7 @@ FILE *mypopen(const char *command, const char *type) {
 int mypclose(FILE *stream) {
 	pid_t wait_pid;
 	int status = 0;
-
+	
 	/* The static PID should contain a number >0 in order to indicate successfull process creation */
 	if (pid == -1)
 	{
@@ -180,18 +179,18 @@ int mypclose(FILE *stream) {
 	}
 	if (stream == NULL || stream != file_ptr) 
 	{
-		/*verify that only a valid file pointer (referring to one of the pipe ends) was committed to mypclose() */
+		/* Verify that only a valid file pointer (referring to one of the pipe ends) was committed to mypclose() */
 		errno = EINVAL;
 		return -1;
 	}
 	if (fclose(stream) == EOF)
 	{  
-		/*globals are reset in order to avoid another fclose() call => it would lead to undefined behavior*/
+		/* Globals are reset in order to avoid another fclose() call => it would lead to undefined behavior */
 		file_ptr = NULL;
 		pid = -1;
 		return -1;
 	}
-
+	
 	while ((wait_pid = waitpid(pid, &status, 0)) != pid)
 	{
 		if (wait_pid == -1)
