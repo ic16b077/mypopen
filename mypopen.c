@@ -29,8 +29,14 @@
 /*
  * --------------------------------------------------------------- defines --
  */
-#define READ "r"
-#define WRITE "w"
+#define READ 0
+#define WRITE 1
+
+/*
+ * ------------------------------------------------------------- functions --
+ */
+void close_fds_and_redirect_stdio(int mode);
+void close_fds_and_create_stream(int mode);
 
 /*
  * --------------------------------------------------------------- globals --
@@ -53,7 +59,8 @@ static FILE *file_ptr = NULL;
  *
  */
 FILE *mypopen(const char *command, const char *type) {
-	int fd[2] = {0};
+	int fd[2] = { 0 };
+	int mode = READ;
 
 	/* Verify that no other filedescriptor is currently opened
 	 * also consider to address errno appropriately */
@@ -78,6 +85,8 @@ FILE *mypopen(const char *command, const char *type) {
 		errno = EINVAL;
 		return NULL;
 	}
+	if (*type == 'w')
+		mode = WRITE;
 	
 	/* Errno is set appropriately within the system call procedure */
 	if (pipe(fd) == -1)
@@ -93,59 +102,14 @@ FILE *mypopen(const char *command, const char *type) {
 			break;
 		/* Child */
 		case 0:
-			if (strcmp(type, READ) == 0)
-			{
-				(void) close(fd[0]);
-				/* Verify if the corresponding file descriptor already includes the value from stdin/stdout */
-				if (fd[1] != STDOUT_FILENO) 
-				{
-					if (dup2(fd[1], STDOUT_FILENO) == -1)
-					{
-						(void) close(fd[1]);
-						/* Terminate the child process immediately
-						 * and release ressources in order to not interfere with the parent process*/
-						_exit(EXIT_FAILURE); 
-					}
-					(void) close(fd[1]);
-				}
-			}
-			else
-			{
-				(void) close(fd[1]);
-				if (fd[0] != STDIN_FILENO)
-				{
-					if (dup2(fd[0], STDIN_FILENO) == -1)
-					{
-						(void) close(fd[0]);
-						_exit(EXIT_FAILURE);
-					}
-					(void) close(fd[0]);
-				}
-			}
+			(void) close_fds_and_redirect_stdio(mode);
 			(void) execl("/bin/sh", "sh", "-c", command, (char *)NULL);
-			/*this fraction will be only executed if execl() fails and an error occurs*/
+			/* This fraction will be only executed if execl() fails and an error occurs */
 			_exit(EXIT_FAILURE);
 			break;
 		/* Parent */
 		default:
-			if (strcmp(type,READ) == 0) 
-			{
-				(void) close(fd[1]);
-				if ((file_ptr = fdopen(fd[0], READ)) == NULL)
-				{
-					(void) close(fd[0]);
-					return NULL;
-				}
-			}
-			else 
-			{
-				(void) close(fd[0]);
-				if ((file_ptr = fdopen(fd[1], WRITE)) == NULL) 
-				{
-					(void) close(fd[1]);
-					return NULL;
-				}
-			}
+			(void) close_fds_and_create_stream(mode);
 			break;
 	}
 	return file_ptr;
@@ -219,5 +183,54 @@ int mypclose(FILE *stream) {
 		errno = ECHILD;
 		pid = -1;
 		return -1;
+	}
+}
+
+/**
+ *
+ * \brief Helper function to close file descriptors and redirect I/O
+ *
+ * \param mode speficies if read or write
+ *
+ *
+ */
+void close_fds_and_redirect_stdio(int mode) {
+	int close_fd = ( mode == READ ? 0 : 1 );
+	int redirect_fd = ( mode == READ ? 1 : 0 );
+	int redirect_stdio = ( mode == READ ? STDOUT_FILENO : STDIN_FILENO );
+	
+	(void) close(fd[close_fd]);
+	/* Verify if the corresponding file descriptor already includes the value from stdin/stdout */
+	if (fd[redirect_fd] != redirect_stdio) 
+	{
+		if (dup2(fd[redirect_fd], redirect_stdio) == -1)
+		{
+			(void) close(fd[redirect_fd]);
+			/* Terminate the child process immediately
+			 * and release ressources in order to not interfere with the parent process*/
+			_exit(EXIT_FAILURE); 
+		}
+		(void) close(fd[redirect_fd]);
+	}
+}
+
+/**
+ *
+ * \brief Helper function to close file descriptors and create stream
+ *
+ * \param mode speficies if read or write
+ *
+ *
+ */
+void close_fds_and_create_stream(int mode) {
+	int close_fd = ( mode == READ ? 1 : 0 );
+	int stream_fd = ( mode == READ ? 0 : 1 );
+	char *stream_mode = ( mode == READ ? "r" : "w" );
+	
+	(void) close(fd[close_fd]);
+	if ((file_ptr = fdopen(fd[stream_fd], stream_mode)) == NULL)
+	{
+		(void) close(fd[stream_fd]);
+		return NULL;
 	}
 }
