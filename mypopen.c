@@ -80,7 +80,7 @@ FILE *mypopen(const char *command, const char *type) {
 		errno = EAGAIN;
 		return NULL;
 	}
-	if (*type != 'r' && *type != 'w' || *(type+1) != '\0')
+	if ((*type != 'r' && *type != 'w') || *(type+1) != '\0')
 	{
 		errno = EINVAL;
 		return NULL;
