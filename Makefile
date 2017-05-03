@@ -48,13 +48,10 @@ popentest: $(OBJECTS)
 testpipe: $(OBJECTS)
 	$(CC) $(CFLAGS) -o $@ $^ -ltest-pipe
 
-.PHONY: clean	
+.PHONY: clean
 
 clean:
-	$(RM) *.o *~
-
-distclean: clean
-	$(RM) test-pipe
+	$(RM) *.o popentest testpipe
 
 doc: html pdf
 
