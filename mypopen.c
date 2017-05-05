@@ -35,8 +35,8 @@
 /*
  * ------------------------------------------------------------- functions --
  */
-void close_fds_and_redirect_stdio(int fd[], int mode);
-int close_fds_and_create_stream(int fd[], int mode);
+static void close_fds_and_redirect_stdio(int fd[], int mode);
+static int close_fds_and_create_stream(int fd[], int mode);
 
 /*
  * --------------------------------------------------------------- globals --
@@ -106,7 +106,10 @@ FILE *mypopen(const char *command, const char *type) {
 			(void) execl("/bin/sh", "sh", "-c", command, (char *)NULL);
 			/* This section will be only executed if execl() fails and an error occurs */
 			pid = -1;
-			_exit(EXIT_FAILURE);
+			/* Value 127 is returned by /bin/sh when the given command is not found 
+			 * within your PATH system variable and it is not a built-in shell command. In other words, 
+			 * the system doesn't understand your command, because it doesn't know where to find the binary you're trying to call. (Reference: stackoverflow.com) */
+			_exit(127);
 			break;
 		/* Parent */
 		default:
@@ -135,11 +138,13 @@ int mypclose(FILE *stream) {
 	/* The static PID should contain a number >0 in order to indicate successfull process creation */
 	if (pid == -1)
 	{
+		/* No child processes (POSIX.1) */
 		errno = ECHILD;
 		return -1;
 	}
 	if (file_ptr == NULL)
 	{
+		/* Invalid argument (POSIX.1) */
 		errno = EINVAL;
 		return -1;
 	}
@@ -176,8 +181,6 @@ int mypclose(FILE *stream) {
 	}
 	if (WIFEXITED(status))
 	{
-		pid = -1;
-		file_ptr = NULL;
 		return WEXITSTATUS(status);
 	}
 	else
